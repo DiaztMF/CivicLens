@@ -1,6 +1,8 @@
 {
-  "name": "LaporVibe",
+  "name": "CivicLens",
   "description": "Aplikasi pelaporan fasilitas umum rusak dengan analisis AI cerdas untuk warga yang peduli.",
-  "requestFramePermissions": ["camera"],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": []
 }

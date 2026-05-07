@@ -16,19 +16,13 @@ import {
   MapPin,
   AlertCircle
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AnalysisResult, ReportResult } from '@/components/ReportResult';
 import { Badge } from '@/components/ui/badge';
 
-// Initialize Gemini API
-const genAI = new GoogleGenAI({ 
-  apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' 
-});
-
-export default function LaporVibePage() {
+export default function CivicLensPage() {
   const [image, setImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -60,30 +54,30 @@ export default function LaporVibePage() {
     setError(null);
 
     try {
-      // Remove base64 prefix
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const genAI = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
+      
+      const mimeType = image.split(';')[0].split(':')[1] || "image/jpeg";
       const base64Data = image.split(',')[1];
       
       const response = await genAI.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: base64Data
-              }
-            },
-            {
-              text: `Analisis gambar fasilitas umum yang rusak ini. Berikan output dalam format JSON yang valid dengan skema berikut:
+        model: "gemini-1.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
               {
-                "category": "Kategori fasilitas (contoh: Jalan Raya, Penerangan, Saluran Air, Fasilitas Sosial, dll)",
-                "urgency": "Tingkat urgensi (Rendah, Sedang, atau Tinggi)",
-                "visualAnalysis": "Deskripsi singkat hasil pengamatan visual Anda terhadap kerusakan yang nampak.",
-                "formalReportDraft": "Tuliskan draf laporan formal bahasa Indonesia yang sopan dan jelas ditujukan kepada instansi pemerintah terkait (seperti Dinas Pekerjaan Umum atau Pemda). Sertakan deskripsi kerusakan dan permintaan perbaikan segera."
-              }`
-            }
-          ]
-        },
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data
+                }
+              },
+              {
+                text: `Analisis gambar fasilitas umum yang rusak ini. Berikan output dalam format JSON yang valid.`
+              }
+            ]
+          }
+        ],
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -99,7 +93,7 @@ export default function LaporVibePage() {
         }
       });
 
-      const responseText = response.text;
+      const responseText = response.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
       if (responseText) {
         const parsed = JSON.parse(responseText.trim());
         setResult(parsed);
@@ -108,7 +102,9 @@ export default function LaporVibePage() {
       }
     } catch (err: any) {
       console.error("Analysis Error:", err);
-      setError("Gagal menganalisis gambar. Pastikan gambar jelas dan coba lagi.");
+      // More detailed error message for debugging
+      const errorMessage = err.message || JSON.stringify(err);
+      setError(`Gagal menganalisis gambar: ${errorMessage}`);
     } finally {
       setAnalyzing(false);
     }
@@ -121,7 +117,7 @@ export default function LaporVibePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" id="laporvibe-app">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" id="civiclens-app">
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -129,7 +125,7 @@ export default function LaporVibePage() {
             <div className="bg-blue-600 p-1.5 rounded-lg">
               <Zap className="w-5 h-5 text-white" fill="currentColor" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">LaporVibe</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">CivicLens</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Cara Kerja</a>
@@ -268,11 +264,10 @@ export default function LaporVibePage() {
             )}
           </div>
 
-          {/* Analysis Result */}
           <div className="lg:sticky lg:top-24">
             <AnimatePresence mode="wait">
               {result ? (
-                <ReportResult result={result} key="result" />
+                <ReportResult result={result} image={image} key="result" />
               ) : !analyzing ? (
                 <motion.div 
                   initial={{ opacity: 0 }}
@@ -298,10 +293,6 @@ export default function LaporVibePage() {
                     <h3 className="text-xl font-bold text-slate-900">Menganalisis Visual...</h3>
                     <p className="text-slate-500 animate-pulse">Memproses detail foto dan menyiapkan draf laporan</p>
                   </div>
-                  <div className="flex gap-2 text-xs font-mono text-slate-400">
-                    <Badge variant="outline" className="bg-white">Detecting Damage</Badge>
-                    <Badge variant="outline" className="bg-white">Assessing Urgency</Badge>
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -311,7 +302,7 @@ export default function LaporVibePage() {
 
       <footer className="mt-20 border-t border-slate-200 py-12 bg-white">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-slate-500 text-sm">&copy; 2024 LaporVibe. Dibuat untuk warga Indonesia yang peduli lingkungan.</p>
+          <p className="text-slate-500 text-sm">&copy; 2024 CivicLens. Dibuat untuk warga yang peduli lingkungan.</p>
         </div>
       </footer>
     </div>

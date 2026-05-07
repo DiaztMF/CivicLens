@@ -11,8 +11,6 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
     mql.addEventListener("change", onChange)
-    // Avoid synchronous setState in effect body by using a small timeout or just relying on event if possible, 
-    // but the best way is to just call it. To satisfy the linter, we can wrap it.
     const initialCheck = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     initialCheck();
     return () => mql.removeEventListener("change", onChange)

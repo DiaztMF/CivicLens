@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { 
   AlertCircle, 
   FileText, 
@@ -19,7 +21,9 @@ import {
   CheckCircle2, 
   Clock,
   AlertTriangle,
-  Lightbulb
+  Lightbulb,
+  Send,
+  Loader2
 } from 'lucide-react';
 
 export interface AnalysisResult {
@@ -31,6 +35,7 @@ export interface AnalysisResult {
 
 interface ReportResultProps {
   result: AnalysisResult;
+  image: string | null;
 }
 
 const getUrgencyConfig = (urgency: string) => {
@@ -56,8 +61,40 @@ const getUrgencyConfig = (urgency: string) => {
   };
 };
 
-export function ReportResult({ result }: ReportResultProps) {
+export function ReportResult({ result, image }: ReportResultProps) {
   const urgencyConfig = getUrgencyConfig(result.urgency);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState(false);
+
+  const handleSubmitReport = async () => {
+    if (!image) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: image,
+          category: result.category,
+          urgency: result.urgency,
+          analysisText: result.visualAnalysis,
+          draftReport: result.formalReportDraft
+        })
+      });
+
+      if (!response.ok) throw new Error('Gagal mengirim laporan');
+
+      toast.success('Laporan berhasil dikirim!', {
+        description: 'Laporan Anda telah disimpan di database.'
+      });
+      setSubmitted(true);
+    } catch (error) {
+      console.error(error);
+      toast.error('Gagal mengirim laporan. Silakan coba lagi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -76,7 +113,7 @@ export function ReportResult({ result }: ReportResultProps) {
                 Hasil Analisis Laporan
               </CardTitle>
               <CardDescription className="mt-1">
-                Laporan otomatis dihasilkan oleh AI LaporVibe
+                Laporan otomatis dihasilkan oleh AI CivicLens
               </CardDescription>
             </div>
             <Badge className={`${urgencyConfig.color} text-white px-3 py-1 flex items-center`}>
@@ -87,7 +124,6 @@ export function ReportResult({ result }: ReportResultProps) {
         </CardHeader>
 
         <CardContent className="space-y-6 pt-6">
-          {/* Category Section */}
           <section>
             <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-slate-500 uppercase tracking-wider">
               <Badge variant="outline" className="rounded-sm px-1.5 py-0.5">Kategori</Badge>
@@ -99,7 +135,6 @@ export function ReportResult({ result }: ReportResultProps) {
 
           <Separator className="bg-slate-100 dark:bg-slate-800" />
 
-          {/* Visual Analysis Section */}
           <section>
             <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wider">
               <Eye className="w-4 h-4" />
@@ -112,7 +147,6 @@ export function ReportResult({ result }: ReportResultProps) {
             </div>
           </section>
 
-          {/* Formal Draft Section */}
           <section>
             <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wider">
               <FileText className="w-4 h-4" />
@@ -122,18 +156,40 @@ export function ReportResult({ result }: ReportResultProps) {
               <pre className="whitespace-pre-wrap font-sans p-5 rounded-xl bg-slate-900 text-slate-100 text-sm leading-relaxed border border-slate-800 shadow-inner">
                 {result.formalReportDraft}
               </pre>
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Badge variant="secondary" className="cursor-pointer hover:bg-slate-700">Salin Draf</Badge>
-              </div>
             </div>
           </section>
         </CardContent>
 
-        <CardFooter className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 p-4">
+        <CardFooter className="flex flex-col bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 p-6 space-y-4">
+          {!submitted ? (
+            <Button 
+              className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-md font-bold shadow-lg shadow-blue-100"
+              onClick={handleSubmitReport}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Mengirim Laporan...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5 mr-2" />
+                  Kirim Laporan Resmi
+                </>
+              )}
+            </Button>
+          ) : (
+            <div className="w-full flex items-center justify-center p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-700 font-bold">
+              <CheckCircle2 className="w-5 h-5 mr-2" />
+              Laporan Terkirim!
+            </div>
+          )}
+          
           <div className="flex items-start gap-3 text-xs text-slate-500 dark:text-slate-400">
             <Lightbulb className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
             <p>
-              Gunakan draf di atas untuk mengirimkan laporan resmi melalui aplikasi pemda setempat atau media sosial terkait.
+              Klik tombol di atas untuk menyimpan laporan ini secara resmi ke sistem kami agar dapat ditindaklanjuti oleh pihak berwenang.
             </p>
           </div>
         </CardFooter>
